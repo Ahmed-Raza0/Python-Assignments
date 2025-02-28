@@ -1,0 +1,3 @@
+streamlit
+python-dotenv
+genai  # Add this if `genai` is publicly available. If it's not, you'll need another method.
