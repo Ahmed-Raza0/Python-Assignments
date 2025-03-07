@@ -109,7 +109,7 @@ def main():
     
     st.markdown('<div class="main">', unsafe_allow_html=True)
     
-    st.markdown('<div class="header">🔐Password Strength Checker</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header">🔐Password Strength Meter</div>', unsafe_allow_html=True)
 
     password = st.text_input("🗝️Enter your password:", type="password")
     submit_button = st.button("Submit", key="submit")
@@ -127,16 +127,16 @@ def main():
             
             st.write(f"Password Strength: {strength}")
             
-            if strength == "Very Weak":
+            if strength == "⚠️Very Weak":
                 st.warning("Your password is too weak! Try using a combination of upper and lower case letters, numbers, and special characters.")
-            elif strength == "Weak":
+            elif strength == "⚠️Weak":
                 st.warning("Consider making your password longer and including a variety of characters.")
-            elif strength == "Moderate":
+            elif strength == "☑️Moderate":
                 st.success("Your password is decent, but could be stronger with more complexity.")
-            elif strength == "Strong":
+            elif strength == "✅Strong":
                 st.success("Your password is strong, but you could still add more variety!")
             else:
-                st.success("Great job! Your password is very strong.")
+                st.success("✅Great job! Your password is very strong.")
             
             
             
@@ -144,10 +144,10 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('<div class="tips">', unsafe_allow_html=True)
     st.write("### Tips for creating a stronger password:")
-    st.write("- Use at least 12 characters.")
-    st.write("- Combine uppercase and lowercase letters.")
-    st.write("- Add numbers and special characters (e.g., !@#$%).")
-    st.write("- Avoid common words or phrases.")
+    st.write("✅ Use at least 12 characters.")
+    st.write("✅ Combine uppercase and lowercase letters.")
+    st.write("✅ Add numbers and special characters (e.g., !@#$%).")
+    st.write("✅ Avoid common words or phrases.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
