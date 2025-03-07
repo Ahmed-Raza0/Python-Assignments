@@ -3,23 +3,23 @@ import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 
-# Load environment variables from .env file
+ 
 load_dotenv()
 
-# Securely fetch GEMINI API Key from environment variables
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Initialize the Gemini client
+ 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Function to get AI explanation from Gemini
+ 
 def get_ai_explanation(conversion_type, input_value, result):
     prompt = f"Explain how {input_value} {conversion_type} is converted to {result} in a simple way."
 
     try:
-        # Generate explanation using the Gemini client
+         
         response = client.models.generate_content(
-            model="gemini-2.0-flash",  # Ensure this model is correct
+            model="gemini-2.0-flash",  
             contents=prompt
         )
         explanation = response.text.strip()
@@ -29,10 +29,10 @@ def get_ai_explanation(conversion_type, input_value, result):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# Streamlit UI
+ 
 st.title("Unit Converter with AI Explanations")
 
-# Styling for the UI
+ 
 st.markdown(
     """
     <style>
@@ -107,14 +107,14 @@ st.markdown(
 st.markdown("<h1>Unit Converter</h1>", unsafe_allow_html=True)
 st.write("Easily convert between units of measurement with a modern design.")
 
-# Sidebar menu for conversion type
+
 conversion_type = st.sidebar.selectbox("Choose Conversion Type to Convert", ["Length", "Weight", "Temperature"])
 value = st.number_input("Enter Value", min_value=0.0, format="%.2f")
 
 col1, col2 = st.columns(2)
 
-# Conversion logic
-result = None  # Initialize result as None
+
+result = None 
 if conversion_type == "Length":
     with col1:
         from_unit = st.selectbox("From", ["Meters", "Kilometers", "Millimeters", "Miles", "Yards", "Centimeters", "Feet", "Inches"])
@@ -170,10 +170,10 @@ elif conversion_type == "Temperature":
     else:
         result = value
 
-# Display result and AI explanation only if result is valid
+
 if result is not None:
     st.markdown(f"<div class='result-box'>{value} {from_unit} is equal to {result:.2f} {to_unit}</div>", unsafe_allow_html=True)
-    # AI Explanation for conversion
+    
     explanation = get_ai_explanation(conversion_type, value, result)
     st.info(f"AI Explanation: {explanation}")
 else:
