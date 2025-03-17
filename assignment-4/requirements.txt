@@ -1,4 +1,4 @@
 streamlit
-supabase-py
-python-dotenv
+supabase
 pandas
+python-dotenv
