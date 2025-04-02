@@ -1,183 +1,135 @@
-import os
 import streamlit as st
-from dotenv import load_dotenv
-from google import genai
-
- 
-load_dotenv()
+import re
 
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
- 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
- 
-def get_ai_explanation(conversion_type, input_value, result):
-    prompt = f"Explain how {input_value} {conversion_type} is converted to {result} in a simple way."
-
-    try:
-         
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",  
-            contents=prompt
-        )
-        explanation = response.text.strip()
-        if not explanation:
-            explanation = "The explanation was not returned by the AI model. Please check the API configuration."
-        return explanation
-    except Exception as e:
-        return f"Error: {str(e)}"
-
- 
-st.title("Unit Converter with AI Explanations")
-
- 
-st.markdown(
-    """
-    <style>
-    body {
-        background: linear-gradient(135deg, #1e3c72, #2a5298); /* Gradient background */
-        color: white;
-        font-family: 'Arial', sans-serif;
-    }
-    .stApp {
-        background: linear-gradient(135deg, #1e3c72, #2a5298); /* Semi-transparent background */
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px); /* Blur effect for glassmorphism */
-    }
-    h1 {
-        text-align: center;
-        font-size: 48px;
-        color: #ff9f43; /* Vibrant orange */
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-    .stButton>button {
-        background: #ff9f43; /* Vibrant orange */
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-size: 18px;
-        box-shadow: 0px 4px 12px rgba(255, 159, 67, 0.4);
-        transition: 0.3s;
-        font-weight: bold;
-    }
-    .stButton>button:hover {
-        background: #ff6f61; /* Coral pink on hover */
-        transform: scale(1.05);
-    }
-    .result-box {
-        font-size: 24px;
-        font-weight: bold;
-        text-align: center;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 25px;
-        border-radius: 15px;
-        margin-top: 20px;
-        margin-bottom: 15px;
-        box-shadow: 0px 4px 12px rgba(255, 159, 67, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .result-box p {
-        margin-bottom: 0;
-        font-size: 22px;
-    }
-    .footer {
-        text-align: center;
-        margin-top: 50px;
-        font-size: 16px;
-        color: white;
-        opacity: 0.7;
-    }
-    .footer a {
-        color: #ff9f43; /* Vibrant orange */
-        text-decoration: none;
-    }
-    .footer a:hover {
-        color: #ff6f61; /* Coral pink on hover */
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
-
-st.markdown("<h1>Unit Converter</h1>", unsafe_allow_html=True)
-st.write("Easily convert between units of measurement with a modern design.")
+def password_strength(password):
+    score = 0
 
 
-conversion_type = st.sidebar.selectbox("Choose Conversion Type to Convert", ["Length", "Weight", "Temperature"])
-value = st.number_input("Enter Value", min_value=0.0, format="%.2f")
-
-col1, col2 = st.columns(2)
-
-
-result = None 
-if conversion_type == "Length":
-    with col1:
-        from_unit = st.selectbox("From", ["Meters", "Kilometers", "Millimeters", "Miles", "Yards", "Centimeters", "Feet", "Inches"])
-    with col2:
-        to_unit = st.selectbox("To", ["Meters", "Kilometers", "Millimeters", "Miles", "Yards", "Centimeters", "Feet", "Inches"])
-        
-    conversion_factors = {
-        "Meters-Kilometers": 0.001, "Kilometers-Meters": 1000,
-        "Meters-Millimeters": 1000, "Millimeters-Meters": 0.001,
-        "Meters-Miles": 0.000621371, "Miles-Meters": 1609.34,
-        "Meters-Yards": 1.09361, "Yards-Meters": 0.9144,
-        "Meters-Centimeters": 100, "Centimeters-Meters": 0.01,
-        "Meters-Feet": 3.28084, "Feet-Meters": 0.3048,
-        "Meters-Inches": 39.3701, "Inches-Meters": 0.0254,
-        "Inches-Feet": 1 / 12, "Feet-Inches": 12
-    }
-    key = f"{from_unit}-{to_unit}"
-    result = value * conversion_factors.get(key, 1)
-
-elif conversion_type == "Weight":
-    with col1:
-        from_unit = st.selectbox("From", ["Kilograms", "Grams", "Milligrams", "Pounds", "Ounces"])
-    with col2:
-        to_unit = st.selectbox("To", ["Kilograms", "Grams", "Milligrams", "Pounds", "Ounces"])
-        
-    conversion_factors = {
-        "Kilograms-Grams": 1000, "Grams-Kilograms": 0.001,
-        "Kilograms-Milligrams": 1000000, "Milligrams-Kilograms": 0.000001,
-        "Kilograms-Pounds": 2.20462, "Pounds-Kilograms": 0.453592,
-        "Kilograms-Ounces": 35.274, "Ounces-Kilograms": 0.0283495
-    }
-    key = f"{from_unit}-{to_unit}"
-    result = value * conversion_factors.get(key, 1)
-
-elif conversion_type == "Temperature":
-    with col1:
-        from_unit = st.selectbox("From", ["Celsius", "Fahrenheit", "Kelvin"])
-    with col2:
-        to_unit = st.selectbox("To", ["Celsius", "Fahrenheit", "Kelvin"])
-        
-    if from_unit == "Celsius" and to_unit == "Fahrenheit":
-        result = (value * 1.8) + 32
-    elif from_unit == "Fahrenheit" and to_unit == "Celsius":
-        result = (value - 32) / 1.8
-    elif from_unit == "Celsius" and to_unit == "Kelvin":
-        result = value + 273.15
-    elif from_unit == "Kelvin" and to_unit == "Celsius":
-        result = value - 273.15
-    elif from_unit == "Fahrenheit" and to_unit == "Kelvin":
-        result = (value - 32) / 1.8 + 273.15
-    elif from_unit == "Kelvin" and to_unit == "Fahrenheit":
-        result = (value - 273.15) * 1.8 + 32
-    else:
-        result = value
-
-
-if result is not None:
-    st.markdown(f"<div class='result-box'>{value} {from_unit} is equal to {result:.2f} {to_unit}</div>", unsafe_allow_html=True)
     
-    explanation = get_ai_explanation(conversion_type, value, result)
-    st.info(f"AI Explanation: {explanation}")
-else:
-    st.warning("Please enter a valid input and ensure the conversion type is selected.")
+    if len(password) >= 8:
+        score += 1
+    if len(password) >= 12:
+        score += 1
 
-# Footer
-st.markdown("<div class='footer'>Developed with ❤️ by <a href='https://github.com/Ahmed-Raza0' target='_blank' style='color: #ff9f43; text-decoration: none;'>Ahmed Raza</a> using Streamlit</div>", unsafe_allow_html=True)
+    
+    if re.search(r'[a-z]', password):
+        score += 1
+    if re.search(r'[A-Z]', password):
+        score += 1
+    if re.search(r'[0-9]', password):
+        score += 1
+    if re.search(r'[\W_]', password):   
+        score += 1
+
+    
+    if score <= 2:
+        strength = "Very Weak"
+    elif score == 3:
+        strength = "Weak"
+    elif score == 4:
+        strength = "Moderate"
+    elif score == 5:
+        strength = "Strong"
+    else:
+        strength = "Very Strong"
+    
+    return strength, score
+
+ 
+def custom_css():
+    st.markdown("""
+        <style>
+            body {
+                background-color: #f4f7fa;
+                font-family: 'Arial', sans-serif;
+            }
+            .main {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+                text-align: center;
+                color: #4CAF50;
+                font-size: 2em;
+            }
+            .input-container {
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+            .submit-btn {
+                background-color: #4CAF50;
+                color: white;
+                padding: 12px 20px;
+                border: none;
+                border-radius: 5px;
+                font-size: 1em;
+                cursor: pointer;
+                width: 100%;
+                transition: background-color 0.3s ease;
+            }
+            .submit-btn:hover {
+                background-color: #45a049;
+            }
+            .tips {
+                font-size: 0.9em;
+                margin-top: 20px;
+                padding: 15px;
+                border-radius: 8px;
+            }
+            .warning-text {
+                color: #f44336;
+            }
+            .success-text {
+                color: #4CAF50;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+
+def main():
+    custom_css()
+    
+    st.markdown('<div class="main">', unsafe_allow_html=True)
+    
+    st.markdown('<div class="header">🔐Password Strength Meter</div>', unsafe_allow_html=True)
+
+    password = st.text_input("🗝️Enter your password:", type="password")
+    submit_button = st.button("Submit", key="submit")
+
+    if submit_button and password:
+        
+        strength, score = password_strength(password)
+ 
+            
+            
+        st.write(f"Password Strength: {strength}")
+            
+        if strength == "Very Weak":
+                st.warning("Your password is too weak! Try using a combination of upper and lower case letters, numbers, and special characters.")
+        elif strength == "Weak":
+                st.warning("Consider making your password longer and including a variety of characters.")
+        elif strength == "Moderate":
+                st.success("Your password is decent, but could be stronger with more complexity.")
+        elif strength == "Strong":
+                st.success("Your password is strong, but you could still add more variety!")
+        else:
+                st.success("Great job! Your password is very strong.")
+            
+            
+            
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tips">', unsafe_allow_html=True)
+    st.write("### Tips for creating a stronger password:")
+    st.write("✅ Use at least 12 characters.")
+    st.write("✅ Combine uppercase and lowercase letters.")
+    st.write("✅ Add numbers and special characters (e.g., !@#$%).")
+    st.write("✅ Avoid common words or phrases.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()

@@ -1,179 +1,183 @@
-import streamlit as st
-import pandas as pd
 import os
-from io import BytesIO
+import streamlit as st
+from dotenv import load_dotenv
+from google import genai
 
-# Set page config
-st.set_page_config(page_title="Data Sweeper", layout='wide', page_icon=":bar_chart:")
+ 
+load_dotenv()
 
-# Custom CSS for styling
-st.markdown("""
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+ 
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+ 
+def get_ai_explanation(conversion_type, input_value, result):
+    prompt = f"Explain how {input_value} {conversion_type} is converted to {result} in a simple way."
+
+    try:
+         
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",  
+            contents=prompt
+        )
+        explanation = response.text.strip()
+        if not explanation:
+            explanation = "The explanation was not returned by the AI model. Please check the API configuration."
+        return explanation
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+ 
+st.title("Unit Converter with AI Explanations")
+
+ 
+st.markdown(
+    """
     <style>
+    body {
+        background: linear-gradient(135deg, #1e3c72, #2a5298); /* Gradient background */
+        color: white;
+        font-family: 'Arial', sans-serif;
+    }
     .stApp {
-        background-color: #000000;
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        margin: 0 auto;
-        max-width: 900px;
-        text-align: center;
-        color: #4f8bf9;
-    }
-    .sidebar {
-        background-color: #4f8bf9;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        color: white;
-    }
-    .stfileUploader {
-        background-color: #f5f5f5;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        color: #4f8bf9;
-        border: 2px dashed #4f8bf9;
-        margin-bottom: 20px;
-    }
-    .stbutton {
-        background-color: #4f8bf9;
-        color: white;
-        border-radius: 5px;
-        padding: 10px 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .stbutton:hover {
-        background-color: #3a6bbf;
-        color: white;
-        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
-    }
-    .main {
-        background-color: #f5f5f5;
+        background: linear-gradient(135deg, #1e3c72, #2a5298); /* Semi-transparent background */
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px); /* Blur effect for glassmorphism */
     }
     h1 {
-        color: #4f8bf9;
-        font-size: 2.5rem;
+        text-align: center;
+        font-size: 48px;
+        color: #ff9f43; /* Vibrant orange */
+        font-weight: bold;
+        margin-bottom: 20px;
     }
-    h2 {
-        color: #2c3e50;
-        font-size: 1.8rem;
-    }
-    .stButton button {
-        background-color: #4f8bf9;
+    .stButton>button {
+        background: #ff9f43; /* Vibrant orange */
         color: white;
-        border-radius: 5px;
-        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 18px;
+        box-shadow: 0px 4px 12px rgba(255, 159, 67, 0.4);
+        transition: 0.3s;
+        font-weight: bold;
     }
-    .stButton button:hover {
-        background-color: #3a6bbf;
-        color: white;
+    .stButton>button:hover {
+        background: #ff6f61; /* Coral pink on hover */
+        transform: scale(1.05);
     }
-    .stDataFrame {
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        background-color: #fff;
-        padding: 15px;
+    .result-box {
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 25px;
+        border-radius: 15px;
         margin-top: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0px 4px 12px rgba(255, 159, 67, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    .stChart {
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    .result-box p {
+        margin-bottom: 0;
+        font-size: 22px;
     }
-    .stDownloadButton button {
-        background-color: #4f8bf9;
+    .footer {
+        text-align: center;
+        margin-top: 50px;
+        font-size: 16px;
         color: white;
-        border-radius: 5px;
-        padding: 10px 20px;
+        opacity: 0.7;
     }
-    .stDownloadButton button:hover {
-        background-color: #3a6bbf;
-        color: white;
+    .footer a {
+        color: #ff9f43; /* Vibrant orange */
+        text-decoration: none;
+    }
+    .footer a:hover {
+        color: #ff6f61; /* Coral pink on hover */
     }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True
+)
 
-# Title and description
-st.title("Data Sweeper")
-st.write("Transform your file between CSV and Excel format with built-in data cleaning and visualization!")
-st.write("Upload a CSV or Excel file to clean, analyze, and visualize your data.")
+st.markdown("<h1>Unit Converter</h1>", unsafe_allow_html=True)
+st.write("Easily convert between units of measurement with a modern design.")
 
-# File uploader
-uploaded_files = st.file_uploader("Upload your files (CSV or Excel)", type=["csv", "xlsx"], accept_multiple_files=True)
 
-if uploaded_files:
-    for file in uploaded_files:
-        file_extension = os.path.splitext(file.name)[-1].lower()
+conversion_type = st.sidebar.selectbox("Choose Conversion Type to Convert", ["Length", "Weight", "Temperature"])
+value = st.number_input("Enter Value", min_value=0.0, format="%.2f")
 
-        if file_extension == ".csv":
-            df = pd.read_csv(file)
-        elif file_extension == ".xlsx":
-            df = pd.read_excel(file)
-        else:
-            st.error(f"Invalid file format. Please upload a file with {file_extension} extension.")
-            continue
+col1, col2 = st.columns(2)
 
-        st.write(f"**File Name:** {file.name}")
-        st.write(f"**File Size:** {file.size / 1024:.2f} KB")
+
+result = None 
+if conversion_type == "Length":
+    with col1:
+        from_unit = st.selectbox("From", ["Meters", "Kilometers", "Millimeters", "Miles", "Yards", "Centimeters", "Feet", "Inches"])
+    with col2:
+        to_unit = st.selectbox("To", ["Meters", "Kilometers", "Millimeters", "Miles", "Yards", "Centimeters", "Feet", "Inches"])
         
-        st.write("Preview the head of the Dataframe")
-        st.dataframe(df.head())
-        
-        st.subheader("Data Cleaning Options")
-        
-        if st.checkbox(f"Clean Data For {file.name}"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button(f"Remove Duplicates for {file.name}"):
-                    original_count = len(df)
-                    df.drop_duplicates(inplace=True)
-                    st.write(f"Duplicates removed successfully. {original_count - len(df)} rows dropped.")
-                    
-            with col2:
-                if st.button(f"Fill Missing Values for {file.name}"):
-                    numeric_cols = df.select_dtypes(include=['number']).columns
-                    df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
-                    st.write("Missing values have been filled with the mean of respective columns.")
-            
-        st.subheader("Select Columns to Convert")
-        columns = st.multiselect(f"Choose Columns for {file.name}", df.columns, default=df.columns)
-        df = df[columns]
-        
-        # Data Visualization
-        st.subheader("Data Visualization")
-        if st.checkbox(f"Show Visualizations for {file.name}"):
-            chart_type = st.selectbox(f"Select Chart Type for {file.name}", ["Bar Chart", "Line Chart", "Area Chart"])
-            
-            if chart_type == "Bar Chart":
-                st.bar_chart(df.select_dtypes(include='number').iloc[: , :2])
-            elif chart_type == "Line Chart":
-                st.line_chart(df.select_dtypes(include='number').iloc[: , :2])
-            elif chart_type == "Area Chart":
-                st.area_chart(df.select_dtypes(include='number').iloc[: , :2])
-        
-        # Convert the file (CSV to Excel)
-        st.subheader("Convert the file")
-        conversion_type = st.radio(f"Convert {file.name} to", ("CSV", "Excel"), key=file.name)
-        if st.button(f"Convert {file.name}"):
-            buffer = BytesIO()
-            if conversion_type == "CSV":
-                df.to_csv(buffer, index=False)
-                file_name = file.name.replace(file_extension, ".csv")
-                mime_type = "text/csv"
-            elif conversion_type == "Excel":
-                df.to_excel(buffer, index=False)
-                file_name = file.name.replace(file_extension, ".xlsx")
-                mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                
-            buffer.seek(0)
-            
-            # Download Button
-            st.download_button(
-                label=f"Download {file.name} as {conversion_type}",
-                data=buffer,
-                file_name=file_name,
-                mime=mime_type
-            )
+    conversion_factors = {
+        "Meters-Kilometers": 0.001, "Kilometers-Meters": 1000,
+        "Meters-Millimeters": 1000, "Millimeters-Meters": 0.001,
+        "Meters-Miles": 0.000621371, "Miles-Meters": 1609.34,
+        "Meters-Yards": 1.09361, "Yards-Meters": 0.9144,
+        "Meters-Centimeters": 100, "Centimeters-Meters": 0.01,
+        "Meters-Feet": 3.28084, "Feet-Meters": 0.3048,
+        "Meters-Inches": 39.3701, "Inches-Meters": 0.0254,
+        "Inches-Feet": 1 / 12, "Feet-Inches": 12
+    }
+    key = f"{from_unit}-{to_unit}"
+    result = value * conversion_factors.get(key, 1)
 
-st.success("All files processed!")
+elif conversion_type == "Weight":
+    with col1:
+        from_unit = st.selectbox("From", ["Kilograms", "Grams", "Milligrams", "Pounds", "Ounces"])
+    with col2:
+        to_unit = st.selectbox("To", ["Kilograms", "Grams", "Milligrams", "Pounds", "Ounces"])
+        
+    conversion_factors = {
+        "Kilograms-Grams": 1000, "Grams-Kilograms": 0.001,
+        "Kilograms-Milligrams": 1000000, "Milligrams-Kilograms": 0.000001,
+        "Kilograms-Pounds": 2.20462, "Pounds-Kilograms": 0.453592,
+        "Kilograms-Ounces": 35.274, "Ounces-Kilograms": 0.0283495
+    }
+    key = f"{from_unit}-{to_unit}"
+    result = value * conversion_factors.get(key, 1)
+
+elif conversion_type == "Temperature":
+    with col1:
+        from_unit = st.selectbox("From", ["Celsius", "Fahrenheit", "Kelvin"])
+    with col2:
+        to_unit = st.selectbox("To", ["Celsius", "Fahrenheit", "Kelvin"])
+        
+    if from_unit == "Celsius" and to_unit == "Fahrenheit":
+        result = (value * 1.8) + 32
+    elif from_unit == "Fahrenheit" and to_unit == "Celsius":
+        result = (value - 32) / 1.8
+    elif from_unit == "Celsius" and to_unit == "Kelvin":
+        result = value + 273.15
+    elif from_unit == "Kelvin" and to_unit == "Celsius":
+        result = value - 273.15
+    elif from_unit == "Fahrenheit" and to_unit == "Kelvin":
+        result = (value - 32) / 1.8 + 273.15
+    elif from_unit == "Kelvin" and to_unit == "Fahrenheit":
+        result = (value - 273.15) * 1.8 + 32
+    else:
+        result = value
+
+
+if result is not None:
+    st.markdown(f"<div class='result-box'>{value} {from_unit} is equal to {result:.2f} {to_unit}</div>", unsafe_allow_html=True)
+    
+    explanation = get_ai_explanation(conversion_type, value, result)
+    st.info(f"AI Explanation: {explanation}")
+else:
+    st.warning("Please enter a valid input and ensure the conversion type is selected.")
+
+# Footer
+st.markdown("<div class='footer'>Developed with ❤️ by <a href='https://github.com/Ahmed-Raza0' target='_blank' style='color: #ff9f43; text-decoration: none;'>Ahmed Raza</a> using Streamlit</div>", unsafe_allow_html=True)

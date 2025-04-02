@@ -1,154 +1,231 @@
 import streamlit as st
-import re
+from supabase import create_client, Client
+import pandas as pd
+import dotenv
+import os
 
 
-if 'recent_passwords' not in st.session_state:
-    st.session_state.recent_passwords = []
+st.markdown(
+    """
+    <style>
+        /* General App Styling */
+        .stApp {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff !important;
+            font-family: 'Arial', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: white !important;
+            text-align: center; 
+            font-weight: bold; 
+            margin-bottom: 20px;
+        }
+        .stButton>button {
+            background-color: #ff4b4b;
+            color: white;
+            border-radius: 12px;
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+        .stButton>button:hover {
+            background-color: #ff6b6b;
+        }
+        .stTextInput>div>div>input, .stNumberInput>div>div>input {
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        .stSelectbox>div>div>div {
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        .stMarkdown {
+            color: white !important;
+        }
+        .stSidebar {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .stSidebar .stSelectbox>div>div>div {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .stSidebar .stSelectbox>div>div>div:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .stSidebar .stButton>button {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .book-card {
+            background: rgba(255, 255, 255, 0.1);
+            width: 230px; 
+            border-radius: 12px; 
+            padding: 20px; 
+            box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.15); 
+            text-align: center;
+            margin-bottom: 15px; 
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            color: white;
+        }
+        .book-card:hover {
+            transform: scale(1.05);
+            box-shadow: 4px 6px 15px rgba(0, 0, 0, 0.2);
+        }
+        .book-card h3 {
+            margin: 0;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .book-card p {
+            margin: 5px 0;
+            color: #ddd;
+            font-size: 16px;
+        }
+        .book-card .year {
+            font-weight: bold;
+            color: #ff4b4b;
+        }
+        .stAlert {
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .stAlert.success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .stAlert.error {
+            background-color: #f44336;
+            color: white;
+        }
+        .stAlert.warning {
+            background-color: #ff9800;
+            color: white;
+        }
+        .stAlert.info {
+            background-color: #2196F3;
+            color: white;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-def password_strength(password):
-    strength = "Weak"
-    score = 0
+dotenv.load_dotenv()
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-    if password in st.session_state.recent_passwords:
-        return "Blocked", 0
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+st.title("📚 Personal Library Manager")
+
+def get_books():
+    try:
+        response = supabase.table("books").select("*").execute()
+        return response.data if response.data else []
+    except Exception as e:
+        st.error(f"Error fetching books: {e}")
+        return []
+
+def add_book(title, author, genre, year):
+    if not title or not author or not genre or not year:
+        st.error("All fields are required!")
+        return
+
+    supabase.table("books").insert({
+        "title": title, "author": author, "genre": genre, "year": year
+    }).execute()
     
-    if len(password) >= 8:
-        score += 1
-    if len(password) >= 12:
-        score += 1
+    st.success(f"✅ '{title}' added successfully!")
+    st.rerun()
 
-    
-    if re.search(r'[a-z]', password):
-        score += 1
-    if re.search(r'[A-Z]', password):
-        score += 1
-    if re.search(r'[0-9]', password):
-        score += 1
-    if re.search(r'[\W_]', password):   
-        score += 1
+def delete_book(book_id):
+    supabase.table("books").delete().eq("id", book_id).execute()
+    st.warning(f"❌ Book with ID {book_id} deleted!")
+    st.rerun()
 
-    
-    if score <= 2:
-        strength = "Very Weak"
-    elif score == 3:
-        strength = "Weak"
-    elif score == 4:
-        strength = "Moderate"
-    elif score == 5:
-        strength = "Strong"
+def update_book(book_id, title, author, genre, year):
+    if not title or not author or not genre or not year:
+        st.error("All fields are required!")
+        return
+    supabase.table("books").update({
+        "title": title, "author": author, "genre": genre, "year": year
+    }).eq("id", book_id).execute()
+    st.success(f"✅ '{title}' updated successfully!")
+    st.rerun()
+
+menu = st.sidebar.selectbox("Menu", ["📖 View Books", "➕ Add Book", "✏️ Update Book", "🗑️ Delete Book"])
+
+if menu == "📖 View Books":
+    st.markdown('<h3>📚 Library Collection</h3>', unsafe_allow_html=True)
+    search_query = st.text_input("🔍 Search by Title, Author, or Genre").lower()
+    books = get_books()
+    if search_query:
+        books = [book for book in books if search_query in book['title'].lower() or 
+                 search_query in book['author'].lower() or search_query in book['genre'].lower()]
+    if books:
+        cols = st.columns(3)
+        for index, book in enumerate(books):
+            with cols[index % 3]:
+                st.markdown(
+                    f"""
+                    <div class="book-card">
+                        <h4>{book.get('title', 'Unknown')}</h4>
+                        <p><strong>Author:</strong> {book.get('author', 'Unknown')}</p>
+                        <p><strong>Genre:</strong> {book.get('genre', 'Unknown')}</p>
+                        <p class="year"><strong>Year:</strong> {str(book.get('year', 'N/A'))}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
     else:
-        strength = "Very Strong"
-    
-    return strength, score
+        st.info("No books found. Try adding some!")
 
+elif menu == "➕ Add Book":
+    st.subheader("➕ Add New Book")
+    title = st.text_input("Title")
+    author = st.text_input("Author")
+    genre = st.text_input("Genre")
+    year = st.number_input("Year", min_value=2000, max_value=2025, step=1)
+    if st.button("Add Book"):
+        add_book(title, author, genre, year)
 
-def update_recent_passwords(password):
-    
-    st.session_state.recent_passwords.append(password)
-    if len(st.session_state.recent_passwords) > 5:
-        st.session_state.recent_passwords.pop(0)
+elif menu == "✏️ Update Book":
+    st.subheader("✏️ Update Book Details")
+    books = get_books()
+    book_options = {book["title"]: book["id"] for book in books}
+    if book_options:
+        selected_title = st.selectbox("Select Book", list(book_options.keys()))
+        selected_id = book_options[selected_title]
+        book = next((b for b in books if b["id"] == selected_id), None)
+        if book:
+            title = st.text_input("Title", book["title"])
+            author = st.text_input("Author", book["author"])
+            genre = st.text_input("Genre", book["genre"])
+            year = st.number_input("Year", min_value=1000, max_value=2025, step=1, value=book["year"])
+            if st.button("Update Book"):
+                update_book(selected_id, title, author, genre, year)
+    else:
+        st.warning("No books available to update.")
 
-
-def custom_css():
-    st.markdown("""
-        <style>
-            body {
-                background-color: #f4f7fa;
-                font-family: 'Arial', sans-serif;
-            }
-            .main {
-                max-width: 600px;
-                margin: 0 auto;;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            }
-            .header {
-                text-align: center;
-                color: #4CAF50;
-                font-size: 2em;
-            }
-            .input-container {
-                margin-top: 20px;
-                margin-bottom: 20px;
-            }
-            .submit-btn {
-                background-color: #4CAF50;
-                color: white;
-                padding: 12px 20px;
-                border: none;
-                border-radius: 5px;
-                font-size: 1em;
-                cursor: pointer;
-                width: 100%;
-                transition: background-color 0.3s ease;
-            }
-            .submit-btn:hover {
-                background-color: #45a049;
-            }
-            .tips {
-                font-size: 0.9em;
-                margin-top: 20px;
-                padding: 15px;
-                border-radius: 8px;
-            }
-            .warning-text {
-                color: #f44336;
-            }
-            .success-text {
-                color: #4CAF50;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-
-def main():
-    custom_css()
-    
-    st.markdown('<div class="main">', unsafe_allow_html=True)
-    
-    st.markdown('<div class="header">🔐Password Strength Meter</div>', unsafe_allow_html=True)
-
-    password = st.text_input("🗝️Enter your password:", type="password")
-    submit_button = st.button("Submit", key="submit")
-
-    if submit_button and password:
-        
-        strength, score = password_strength(password)
-
-        if strength == "Blocked":
-            st.error("✖️This password has been used recently and cannot be used again. Please choose another one.")
-        else:
-            
-            update_recent_passwords(password)
-            
-            
-            st.write(f"Password Strength: {strength}")
-            
-            if strength == "⚠️Very Weak":
-                st.warning("Your password is too weak! Try using a combination of upper and lower case letters, numbers, and special characters.")
-            elif strength == "⚠️Weak":
-                st.warning("Consider making your password longer and including a variety of characters.")
-            elif strength == "☑️Moderate":
-                st.success("Your password is decent, but could be stronger with more complexity.")
-            elif strength == "✅Strong":
-                st.success("Your password is strong, but you could still add more variety!")
-            else:
-                st.success("✅Great job! Your password is very strong.")
-            
-            
-            
-
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('<div class="tips">', unsafe_allow_html=True)
-    st.write("### Tips for creating a stronger password:")
-    st.write("✅ Use at least 12 characters.")
-    st.write("✅ Combine uppercase and lowercase letters.")
-    st.write("✅ Add numbers and special characters (e.g., !@#$%).")
-    st.write("✅ Avoid common words or phrases.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-if __name__ == "__main__":
-    main()
+elif menu == "🗑️ Delete Book":
+    st.subheader("🗑️ Delete Book")
+    books = get_books()
+    book_options = {book["title"]: book["id"] for book in books}
+    if book_options:
+        selected_title = st.selectbox("Select Book", list(book_options.keys()))
+        selected_id = book_options[selected_title]
+        st.warning(f"Are you sure you want to delete '{selected_title}'?")
+        if st.button("Yes, Delete"):
+            delete_book(selected_id)
+    else:
+        st.warning("No books available to delete.")
