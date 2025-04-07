@@ -1,1 +1,4 @@
+project-24/discord-bot/.env
+*__pycache__
+*venv
 *env
